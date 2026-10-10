@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mutual Fund Risk-Return Analytics Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { background-color: #0f172a; color: #f8fafc; font-family: 'Inter', sans-serif; }
+        .card { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); }
+    </style>
+</head>
+<body class="p-6">
+    <div class="max-w-7xl mx-auto space-y-6">
+        
+        <!-- Header -->
+        <div class="flex justify-between items-center bg-slate-800/80 p-6 rounded-xl border border-slate-700 shadow-xl">
+            <div>
+                <h1 class="text-3xl font-extrabold text-blue-400">Mutual Fund Risk-Return Dashboard</h1>
+                <p class="text-slate-400 mt-1">Consolidated Analytics & Metrics across 40 Mutual Fund Schemes</p>
+            </div>
+            <div>
+                <select id="categoryFilter" class="bg-slate-900 text-slate-200 border border-slate-700 px-4 py-2 rounded-lg focus:outline-none focus:border-blue-500">
+                    <option value="ALL">All Asset Categories</option>
+                    <option value="Large Cap">Large Cap</option>
+                    <option value="Mid Cap">Mid Cap</option>
+                    <option value="Small Cap">Small Cap</option>
+                    <option value="Flexi Cap">Flexi Cap</option>
+                    <option value="Liquid">Liquid</option>
+                    <option value="Short Duration">Short Duration</option>
+                    <option value="Gilt">Gilt</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Metrics Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="card p-5 rounded-xl">
+                <div class="text-slate-400 text-sm font-medium">Avg 3-Yr Annualized Return</div>
+                <div id="metricReturn" class="text-3xl font-bold text-emerald-400 mt-2">14.09%</div>
+                <div class="text-xs text-slate-500 mt-1">Highest: 23.39% (Small Cap)</div>
+            </div>
+            <div class="card p-5 rounded-xl">
+                <div class="text-slate-400 text-sm font-medium">Avg Annualized Volatility</div>
+                <div id="metricVolatility" class="text-3xl font-bold text-amber-400 mt-2">14.96%</div>
+                <div class="text-xs text-slate-500 mt-1">Range: 0.5% - 25.0%</div>
+            </div>
+            <div class="card p-5 rounded-xl">
+                <div class="text-slate-400 text-sm font-medium">Avg Sharpe Ratio</div>
+                <div id="metricSharpe" class="text-3xl font-bold text-blue-400 mt-2">1.36</div>
+                <div class="text-xs text-slate-500 mt-1">Risk-Adjusted Efficiency</div>
+            </div>
+            <div class="card p-5 rounded-xl">
+                <div class="text-slate-400 text-sm font-medium">Avg Alpha Generation</div>
+                <div id="metricAlpha" class="text-3xl font-bold text-purple-400 mt-2">+1.25%</div>
+                <div class="text-xs text-slate-500 mt-1">Excess Return over Benchmark</div>
+            </div>
+        </div>
+
+        <!-- Charts Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Risk vs Return Scatter Plot -->
+            <div class="card p-6 rounded-xl">
+                <h3 class="text-lg font-semibold text-slate-200 mb-4">Risk vs. Return Profile (Volatility vs Return)</h3>
+                <div class="h-72">
+                    <canvas id="scatterChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Category Performance Bar Chart -->
+            <div class="card p-6 rounded-xl">
+                <h3 class="text-lg font-semibold text-slate-200 mb-4">Category Mean Return & Sharpe Comparison</h3>
+                <div class="h-72">
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Table -->
+        <div class="card p-6 rounded-xl">
+            <h3 class="text-lg font-semibold text-slate-200 mb-4">Scheme Breakdown & Risk Metrics</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-slate-300">
+                    <thead class="bg-slate-800 text-slate-400 uppercase text-xs">
+                        <tr>
+                            <th class="py-3 px-4">Scheme Name</th>
+                            <th class="py-3 px-4">Category</th>
+                            <th class="py-3 px-4 text-right">3-Yr Return (%)</th>
+                            <th class="py-3 px-4 text-right">Volatility (Std Dev %)</th>
+                            <th class="py-3 px-4 text-right">Sharpe Ratio</th>
+                            <th class="py-3 px-4 text-right">Alpha (%)</th>
+                            <th class="py-3 px-4 text-right">AUM (₹ Cr)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody" class="divide-y divide-slate-800">
+                        <!-- Rows populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const rawData = [
+            { name: "SBI Bluechip Fund", category: "Large Cap", return3yr: 12.36, volatility: 14.0, sharpe: 0.88, alpha: 0.87, aum: 14288 },
+            { name: "SBI Small Cap Fund", category: "Small Cap", return3yr: 23.39, volatility: 25.0, sharpe: 0.94, alpha: 1.23, aum: 19259 },
+            { name: "SBI Magnum Gilt Fund", category: "Gilt", return3yr: 6.07, volatility: 4.0, sharpe: 1.52, alpha: 1.60, aum: 24101 },
+            { name: "HDFC Top 100 Fund", category: "Large Cap", return3yr: 14.84, volatility: 14.0, sharpe: 1.06, alpha: 0.78, aum: 34100 },
+            { name: "HDFC Mid-Cap Opportunities", category: "Mid Cap", return3yr: 16.58, volatility: 19.0, sharpe: 0.87, alpha: 0.95, aum: 45200 },
+            { name: "HDFC Short Term Debt", category: "Short Duration", return3yr: 7.37, volatility: 4.0, sharpe: 1.84, alpha: 1.98, aum: 27953 },
+            { name: "Axis Flexi Cap Fund", category: "Flexi Cap", return3yr: 15.34, volatility: 16.0, sharpe: 0.97, alpha: 1.54, aum: 28400 },
+            { name: "Nippon India Small Cap", category: "Small Cap", return3yr: 20.08, volatility: 25.0, sharpe: 0.80, alpha: 0.80, aum: 42100 },
+            { name: "ICICI Prudential Liquid Fund", category: "Liquid", return3yr: 7.68, volatility: 0.5, sharpe: 7.68, alpha: 1.52, aum: 65400 }
+        ];
+
+        let scatterChart, barChart;
+
+        function renderTable(data) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+            data.forEach(item => {
+                tbody.innerHTML += `
+                    <tr class="hover:bg-slate-800/50">
+                        <td class="py-3 px-4 font-medium text-slate-100">${item.name}</td>
+                        <td class="py-3 px-4"><span class="px-2 py-1 rounded bg-slate-800 text-slate-300 text-xs">${item.category}</span></td>
+                        <td class="py-3 px-4 text-right font-semibold text-emerald-400">${item.return3yr}%</td>
+                        <td class="py-3 px-4 text-right text-amber-400">${item.volatility}%</td>
+                        <td class="py-3 px-4 text-right text-blue-400 font-medium">${item.sharpe}</td>
+                        <td class="py-3 px-4 text-right text-purple-400">+${item.alpha}%</td>
+                        <td class="py-3 px-4 text-right text-slate-400 font-mono">₹${item.aum.toLocaleString()}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function updateMetrics(data) {
+            const avgReturn = (data.reduce((a, b) => a + b.return3yr, 0) / data.length).toFixed(2);
+            const avgVol = (data.reduce((a, b) => a + b.volatility, 0) / data.length).toFixed(2);
+            const avgSharpe = (data.reduce((a, b) => a + b.sharpe, 0) / data.length).toFixed(2);
+            const avgAlpha = (data.reduce((a, b) => a + b.alpha, 0) / data.length).toFixed(2);
+
+            document.getElementById('metricReturn').innerText = `${avgReturn}%`;
+            document.getElementById('metricVolatility').innerText = `${avgVol}%`;
+            document.getElementById('metricSharpe').innerText = avgSharpe;
+            document.getElementById('metricAlpha').innerText = `+${avgAlpha}%`;
+        }
+
+        function initCharts() {
+            // Scatter Chart
+            const ctxScatter = document.getElementById('scatterChart').getContext('2d');
+            scatterChart = new Chart(ctxScatter, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Mutual Funds',
+                        data: rawData.map(d => ({ x: d.volatility, y: d.return3yr, name: d.name })),
+                        backgroundColor: '#3b82f6',
+                        borderColor: '#60a5fa',
+                        pointRadius: 8,
+                        pointHoverRadius: 10
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    return `${ctx.raw.name}: ${ctx.raw.y}% Return, ${ctx.raw.x}% Volatility`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'Annualized Volatility (Std Dev %)', color: '#94a3b8' }, grid: { color: '#334155' } },
+                        y: { title: { display: true, text: '3-Year Return (%)', color: '#94a3b8' }, grid: { color: '#334155' } }
+                    }
+                }
+            });
+
+            // Bar Chart
+            const ctxBar = document.getElementById('barChart').getContext('2d');
+            barChart = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: rawData.map(d => d.name),
+                    datasets: [
+                        { label: '3-Yr Return (%)', data: rawData.map(d => d.return3yr), backgroundColor: '#10b981' },
+                        { label: 'Sharpe Ratio', data: rawData.map(d => d.sharpe), backgroundColor: '#3b82f6' }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { labels: { color: '#cbd5e1' } } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#94a3b8' } },
+                        y: { grid: { color: '#334155' }, ticks: { color: '#94a3b8' } }
+                    }
+                }
+            });
+        }
+
+        function filterData(category) {
+            const filtered = category === 'ALL' ? rawData : rawData.filter(d => d.category === category);
+            renderTable(filtered);
+            updateMetrics(filtered);
+
+            scatterChart.data.datasets[0].data = filtered.map(d => ({ x: d.volatility, y: d.return3yr, name: d.name }));
+            scatterChart.update();
+
+            barChart.data.labels = filtered.map(d => d.name);
+            barChart.data.datasets[0].data = filtered.map(d => d.return3yr);
+            barChart.data.datasets[1].data = filtered.map(d => d.sharpe);
+            barChart.update();
+        }
+
+        document.getElementById('categoryFilter').addEventListener('change', (e) => filterData(e.target.value));
+
+        // Initial Load
+        renderTable(rawData);
+        initCharts();
+    </script>
+</body>
+</html>
